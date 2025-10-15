@@ -158,9 +158,9 @@ if os.geteuid() != 0:
     exit("ERROR: This script must be run as root.")
 
 # Make sure the script is in the right directory
-if not os.path.isfile("SkywarnPlus.py"):
+if not os.path.isfile("main.py"):
     print(
-        "ERROR: Cannot find SkywarnPlus.py. Make sure this script is in the SkywarnPlus directory."
+        "ERROR: Cannot find main.py. Make sure this script is in the SkywarnPlus directory."
     )
     exit()
 
