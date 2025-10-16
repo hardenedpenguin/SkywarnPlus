@@ -1,0 +1,23 @@
+[Unit]
+Description=Run SkywarnPlus Weather Alert Monitor
+Documentation=https://github.com/Mason10198/SkywarnPlus
+Requires=skywarnplus.service
+
+[Timer]
+# Run every minute by default (same as original cron: * * * * *)
+OnCalendar=*:*:00
+
+# Ensure task runs if missed due to system downtime
+Persistent=true
+
+# Add randomization to avoid API load spikes (0-30 seconds)
+RandomizedDelaySec=30
+
+# High precision timing
+AccuracySec=1s
+
+# Don't run if system is in maintenance mode
+ConditionPathExists=!/etc/maintenance-mode
+
+[Install]
+WantedBy=timers.target

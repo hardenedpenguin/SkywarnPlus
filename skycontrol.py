@@ -251,9 +251,18 @@ class SkyControlApp:
                 node_id = args[0]
                 return self.change_node_id(node_id)
             
+            elif command.lower() == 'timer':
+                if len(args) < 1:
+                    self.logger.error("Usage: timer <action>")
+                    self.logger.info("Available timer actions: status, start, stop, restart, enable, disable, logs, list")
+                    return False
+                
+                action = args[0]
+                return self.config_controller.manage_systemd_timer(action)
+            
             else:
                 self.logger.error(f"Unknown command: {command}")
-                self.logger.info("Available commands: set, get, list, ct, id")
+                self.logger.info("Available commands: set, get, list, ct, id, timer")
                 return False
                 
         except Exception as e:
@@ -268,7 +277,7 @@ def main():
     
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="SkyControl - Configuration control for SkywarnPlus")
-    parser.add_argument("command", help="Command to execute (set, get, list, ct, id)")
+    parser.add_argument("command", help="Command to execute (set, get, list, ct, id, timer)")
     parser.add_argument("args", nargs="*", help="Command arguments")
     parser.add_argument("--config", help="Path to config file")
     

@@ -279,3 +279,119 @@ class ConfigController:
         except Exception as e:
             self.logger.error(f"Configuration validation failed: {e}")
             return False
+    
+    def manage_systemd_timer(self, action: str) -> bool:
+        """Manage systemd timer for SkywarnPlus."""
+        try:
+            if action == "status":
+                result = subprocess.run(
+                    ["systemctl", "status", "skywarnplus.timer"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                print(result.stdout)
+                if result.stderr:
+                    print(result.stderr)
+                return result.returncode == 0
+                
+            elif action == "start":
+                result = subprocess.run(
+                    ["systemctl", "start", "skywarnplus.timer"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print("SkywarnPlus timer started successfully.")
+                else:
+                    print(f"Failed to start timer: {result.stderr}")
+                return result.returncode == 0
+                
+            elif action == "stop":
+                result = subprocess.run(
+                    ["systemctl", "stop", "skywarnplus.timer"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print("SkywarnPlus timer stopped successfully.")
+                else:
+                    print(f"Failed to stop timer: {result.stderr}")
+                return result.returncode == 0
+                
+            elif action == "restart":
+                result = subprocess.run(
+                    ["systemctl", "restart", "skywarnplus.timer"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print("SkywarnPlus timer restarted successfully.")
+                else:
+                    print(f"Failed to restart timer: {result.stderr}")
+                return result.returncode == 0
+                
+            elif action == "enable":
+                result = subprocess.run(
+                    ["systemctl", "enable", "skywarnplus.timer"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print("SkywarnPlus timer enabled successfully.")
+                else:
+                    print(f"Failed to enable timer: {result.stderr}")
+                return result.returncode == 0
+                
+            elif action == "disable":
+                result = subprocess.run(
+                    ["systemctl", "disable", "skywarnplus.timer"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print("SkywarnPlus timer disabled successfully.")
+                else:
+                    print(f"Failed to disable timer: {result.stderr}")
+                return result.returncode == 0
+                
+            elif action == "logs":
+                result = subprocess.run(
+                    ["journalctl", "-u", "skywarnplus.service", "--no-pager", "-n", "50"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                print(result.stdout)
+                if result.stderr:
+                    print(result.stderr)
+                return result.returncode == 0
+                
+            elif action == "list":
+                result = subprocess.run(
+                    ["systemctl", "list-timers", "--no-pager"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                print(result.stdout)
+                if result.stderr:
+                    print(result.stderr)
+                return result.returncode == 0
+                
+            else:
+                print(f"Unknown systemd timer action: {action}")
+                print("Available actions: status, start, stop, restart, enable, disable, logs, list")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            self.logger.error("Systemd timer operation timed out")
+            return False
+        except Exception as e:
+            self.logger.error(f"Systemd timer operation failed: {e}")
+            return False

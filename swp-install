@@ -4,7 +4,7 @@
 # ===============================================================================
 # Script to install SkywarnPlus. This script will determine the system type (ASL1/2, ASL3, or HamVoIP),
 # install the required dependencies, download the latest version of SkywarnPlus from GitHub,
-# configure the necessary permissions, and set up a crontab entry to run SkywarnPlus at a specified interval.
+# configure the necessary permissions, and set up a systemd timer to run SkywarnPlus at a specified interval.
 # This script also checks if the SkywarnPlus directory already exists and asks for user confirmation to remove it before continuing.
 # Please note that this script should be run as root.
 
@@ -184,29 +184,73 @@ configure_perms() {
 
 remove_old_cron() {
     print_divider
-    echo "Checking for \"old style\" crontab entry for SkywarnPlus.py..."
-    CRONTAB_OLD=$(crontab -l | grep 'SkywarnPlus.py')
+    echo "Checking for old cron-based SkywarnPlus installations..."
+    
+    # Check for old crontab entries
+    CRONTAB_OLD=$(crontab -l 2>/dev/null | grep 'SkywarnPlus.py')
     if [ -n "$CRONTAB_OLD" ]; then
-        echo "Found \"old style\" crontab entry for SkywarnPlus.py:"
+        echo "Found old crontab entry for SkywarnPlus.py:"
         echo "$CRONTAB_OLD"
-        echo "This must be removed to avoid conflicts. A new crontab entry will reside in /etc/cron.d/SkywarnPlus."
-        echo "Removing \"old style\" crontab entry for SkywarnPlus.py..."
-        (crontab -l | grep -v 'SkywarnPlus.py') | crontab -
-        echo "\"Old style\" crontab entry for SkywarnPlus.py removed."
+        echo "This must be removed to avoid conflicts with the new systemd timer."
+        echo "Removing old crontab entry for SkywarnPlus.py..."
+        (crontab -l 2>/dev/null | grep -v 'SkywarnPlus.py') | crontab -
+        echo "Old crontab entry for SkywarnPlus.py removed."
     else
-        echo "No \"old style\" crontab entry found for SkywarnPlus.py."
+        echo "No old crontab entry found for SkywarnPlus.py."
+    fi
+    
+    # Check for old cron.d files
+    CRON_FILE="/etc/cron.d/SkywarnPlus"
+    if [ -f "$CRON_FILE" ]; then
+        echo "Found old cron.d file: $CRON_FILE"
+        echo "This will be replaced by systemd timer."
+        rm "$CRON_FILE"
+        echo "Old cron.d file removed."
+    else
+        echo "No old cron.d file found."
+    fi
+    
+    # Check for ASL3 Supermon cron files
+    SUPERMON_CRON_FILE="/etc/cron.d/ASL3_Supermon_Workaround"
+    if [ -f "$SUPERMON_CRON_FILE" ]; then
+        echo "Found old ASL3 Supermon cron file: $SUPERMON_CRON_FILE"
+        echo "This will be replaced by systemd timer."
+        rm "$SUPERMON_CRON_FILE"
+        echo "Old ASL3 Supermon cron file removed."
+    else
+        echo "No old ASL3 Supermon cron file found."
+    fi
+    
+    print_divider
+    echo "Checking for existing systemd timers..."
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl list-unit-files | grep -q "skywarnplus.timer"; then
+            echo "Found existing SkywarnPlus systemd timer."
+            echo "The installation will update the existing timer configuration."
+        else
+            echo "No existing SkywarnPlus systemd timer found."
+        fi
+        
+        if systemctl list-unit-files | grep -q "asl3-supermon-workaround.timer"; then
+            echo "Found existing ASL3 Supermon workaround systemd timer."
+            echo "The installation will update the existing timer configuration."
+        else
+            echo "No existing ASL3 Supermon workaround systemd timer found."
+        fi
+    else
+        echo "systemctl not available - cannot check existing systemd timers."
     fi
     
     print_divider
     echo "Checking for existing crontab entry for ast_var_update.sh..."
-    CRONTAB_AST=$(crontab -l | grep 'ast_var_update.sh')
+    CRONTAB_AST=$(crontab -l 2>/dev/null | grep 'ast_var_update.sh')
     if [ -n "$CRONTAB_AST" ]; then
         echo "It looks like you have added a crontab entry for ast_var_update.sh - this functionality will now be handled by SkywarnPlus, and this crontab entry should be removed to avoid conflicts."
         read -r -p "Would you like to remove the crontab entry now? (Y/n): " choice
         choice=${choice:-y}
         if [[ "$choice" =~ ^[Yy]$ ]]; then
             echo "Removing old crontab entry for ast_var_update.sh..."
-            (crontab -l | grep -v 'ast_var_update.sh') | crontab -
+            (crontab -l 2>/dev/null | grep -v 'ast_var_update.sh') | crontab -
             echo "Old crontab entry for ast_var_update.sh removed."
         else
             echo "Crontab entry for ast_var_update.sh not removed."
@@ -216,90 +260,156 @@ remove_old_cron() {
     fi
 }
 
-setup_crontab() {
+setup_systemd_timer() {
     print_divider
-    CRON_FILE="/etc/cron.d/SkywarnPlus"
+    echo "Setting up systemd timer for automatic execution..."
+    print_divider
     
-    if [ -f "$CRON_FILE" ]; then
-        EXISTING_INTERVAL=$(grep -o '^\*/[0-9]*' "$CRON_FILE" | cut -d'/' -f2)
-        if [ -n "$EXISTING_INTERVAL" ]; then
-            echo "An existing crontab entry for SkywarnPlus was found with a $EXISTING_INTERVAL minute interval."
-            echo
-            echo "By default, the existing crontab entry will be kept."
-            echo
-            echo "To keep the existing $EXISTING_INTERVAL minute interval, press enter."
-            echo "To change the interval, enter a different number of minutes."
-            echo "To disable the crontab entry and require manual execution, enter '0'."
-            read -r -p "Crontab interval ($EXISTING_INTERVAL): " CRONTAB_INTERVAL
-            print_divider
-            CRONTAB_INTERVAL=${CRONTAB_INTERVAL:-$EXISTING_INTERVAL}
-        fi
+    # Check if systemd is available
+    if ! command -v systemctl >/dev/null 2>&1; then
+        print_divider
+        echo "ERROR: systemd is not available on this system."
+        echo "SkywarnPlus requires systemd for automatic execution."
+        echo "Please install systemd or run SkywarnPlus manually."
+        print_divider
+        exit 1
+    fi
+    
+    # Check for existing systemd timer
+    if systemctl list-unit-files | grep -q "skywarnplus.timer"; then
+        echo "An existing systemd timer for SkywarnPlus was found."
+        echo
+        echo "By default, the existing timer will be kept."
+        echo
+        echo "To keep the existing timer configuration, press enter."
+        echo "To reconfigure the timer interval, enter a number of minutes."
+        echo "To disable the timer and require manual execution, enter '0'."
+        read -r -p "Timer interval (1): " TIMER_INTERVAL
+        TIMER_INTERVAL=${TIMER_INTERVAL:-1}
     else
-        echo "By default, a new crontab entry will be added to trigger SkywarnPlus (check for alerts) every 1 minute."
+        echo "By default, a new systemd timer will be created to trigger SkywarnPlus every 1 minute."
         echo
         echo "To keep the default 1 minute interval, press enter."
-        echo "If you would like to increase this interval, enter a different number of minutes."
-        echo "To disable the crontab entry and require manual execution, enter '0'."
-        read -r -p "Crontab interval (1): " CRONTAB_INTERVAL
-        CRONTAB_INTERVAL=${CRONTAB_INTERVAL:-1}
+        echo "If you would like to change this interval, enter a different number of minutes."
+        echo "To disable automatic execution and require manual execution, enter '0'."
+        read -r -p "Timer interval (1): " TIMER_INTERVAL
+        TIMER_INTERVAL=${TIMER_INTERVAL:-1}
     fi
 
-    if [ "$CRONTAB_INTERVAL" -eq 0 ]; then
-        if [ -f "$CRON_FILE" ]; then
-            rm "$CRON_FILE"
-            echo "Existing crontab entry removed. You will need to run SkywarnPlus manually."
+    if [ "$TIMER_INTERVAL" -eq 0 ]; then
+        # Disable and remove systemd timer
+        if systemctl is-enabled skywarnplus.timer >/dev/null 2>&1; then
+            systemctl stop skywarnplus.timer
+            systemctl disable skywarnplus.timer
+            echo "Systemd timer disabled. You will need to run SkywarnPlus manually."
         else
-            echo "No crontab entry created. You will need to run SkywarnPlus manually."
+            echo "No systemd timer found. You will need to run SkywarnPlus manually."
         fi
     else
-        if [ "$SYSTEM_TYPE" = "ASL3" ]; then
-            CRONTAB_ENTRY="*/$CRONTAB_INTERVAL * * * * asterisk /usr/local/bin/SkywarnPlus/SkywarnPlus.py"
-        else
-            CRONTAB_ENTRY="*/$CRONTAB_INTERVAL * * * * root /usr/local/bin/SkywarnPlus/SkywarnPlus.py"
+        # Install systemd service and timer files
+        echo "Installing systemd service and timer files..."
+        
+        # Copy service file
+        cp "$INSTALL_DIR/systemd/skywarnplus.service" "/etc/systemd/system/" || {
+            print_divider
+            echo "Failed to copy systemd service file. Exiting."
+            print_divider
+            exit 1
+        }
+        
+        # Copy timer file
+        cp "$INSTALL_DIR/systemd/skywarnplus.timer" "/etc/systemd/system/" || {
+            print_divider
+            echo "Failed to copy systemd timer file. Exiting."
+            print_divider
+            exit 1
+        }
+        
+        # Update timer interval if different from default
+        if [ "$TIMER_INTERVAL" -ne 1 ]; then
+            # Convert minutes to OnCalendar format
+            if [ "$TIMER_INTERVAL" -eq 5 ]; then
+                CALENDAR="*:0/5"
+            elif [ "$TIMER_INTERVAL" -eq 10 ]; then
+                CALENDAR="*:0/10"
+            elif [ "$TIMER_INTERVAL" -eq 15 ]; then
+                CALENDAR="*:0/15"
+            elif [ "$TIMER_INTERVAL" -eq 30 ]; then
+                CALENDAR="*:0/30"
+            else
+                # Custom interval - use minutes format
+                CALENDAR="*:0/$TIMER_INTERVAL"
+            fi
+            
+            # Update the timer file with new interval
+            sed -i "s/OnCalendar=.*/OnCalendar=$CALENDAR/" "/etc/systemd/system/skywarnplus.timer"
         fi
-
-        if grep -Fxq "$CRONTAB_ENTRY" "$CRON_FILE" 2>/dev/null; then
-            echo "Crontab entry already exists. Skipping."
-        else
-            echo "$CRONTAB_ENTRY" > "$CRON_FILE" || {
-                print_divider
-                echo "Failed to create crontab entry. Exiting."
-                print_divider
-                exit 1
-            }
-        fi
+        
+        # Reload systemd and enable timer
+        systemctl daemon-reload
+        systemctl enable skywarnplus.timer
+        systemctl start skywarnplus.timer
+        
+        echo "Systemd timer installed and started successfully."
+        echo "Timer will run every $TIMER_INTERVAL minute(s)."
     fi
 
+    # Handle ASL3 Supermon workaround with systemd timer
     if [ "$SYSTEM_TYPE" = "ASL3" ]; then
         print_divider
-        echo "This is an ASL3 system. In order for Supermon to display SkywarnPlus alerts on ASL3, a second crontab entry needs to be created to run ASL3_Supermon_Workaround.py as the root user."
+        echo "This is an ASL3 system. In order for Supermon to display SkywarnPlus alerts on ASL3, a systemd timer needs to be created to run ASL3_Supermon_Workaround.py."
         
         if [ -d "/var/www/html/supermon/" ]; then
-            echo "It looks like you have Supermon installed, so it is recommended to create this crontab entry."
+            echo "It looks like you have Supermon installed, so it is recommended to create this systemd timer."
         else
-            echo "It looks like you do not have Supermon installed, but you can still safely create this crontab entry in case you decide to use Supermon later."
+            echo "It looks like you do not have Supermon installed, but you can still safely create this systemd timer in case you decide to use Supermon later."
         fi
 
-        read -r -p "Would you like to create the crontab entry for ASL3_Supermon_Workaround.py now? (Y/n): " CREATE_SUPERMON_CRON
-        CREATE_SUPERMON_CRON=${CREATE_SUPERMON_CRON:-y}
+        read -r -p "Would you like to create the systemd timer for ASL3_Supermon_Workaround.py now? (Y/n): " CREATE_SUPERMON_TIMER
+        CREATE_SUPERMON_TIMER=${CREATE_SUPERMON_TIMER:-y}
 
-        if [[ "$CREATE_SUPERMON_CRON" =~ ^[Yy]$ ]]; then
-            SUPERMON_CRON_FILE="/etc/cron.d/ASL3_Supermon_Workaround"
-            SUPERMON_CRONTAB_ENTRY="* * * * * root /usr/local/bin/SkywarnPlus/ASL3_Supermon_Workaround.py"
+        if [[ "$CREATE_SUPERMON_TIMER" =~ ^[Yy]$ ]]; then
+            # Create ASL3 Supermon service file
+            cat > "/etc/systemd/system/asl3-supermon-workaround.service" << 'EOF'
+[Unit]
+Description=ASL3 Supermon Workaround for SkywarnPlus
+Documentation=https://github.com/Mason10198/SkywarnPlus
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/SkywarnPlus/ASL3_Supermon_Workaround.py
+WorkingDirectory=/usr/local/bin/SkywarnPlus
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=60
+EOF
+
+            # Create ASL3 Supermon timer file
+            cat > "/etc/systemd/system/asl3-supermon-workaround.timer" << 'EOF'
+[Unit]
+Description=Run ASL3 Supermon Workaround every minute
+Requires=asl3-supermon-workaround.service
+
+[Timer]
+OnCalendar=*:*:00
+Persistent=true
+RandomizedDelaySec=30
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
+EOF
+
+            # Enable and start the timer
+            systemctl daemon-reload
+            systemctl enable asl3-supermon-workaround.timer
+            systemctl start asl3-supermon-workaround.timer
             
-            if grep -Fxq "$SUPERMON_CRONTAB_ENTRY" "$SUPERMON_CRON_FILE" 2>/dev/null; then
-                echo "Supermon crontab entry already exists. Skipping."
-            else
-                echo "$SUPERMON_CRONTAB_ENTRY" > "$SUPERMON_CRON_FILE" || {
-                    print_divider
-                    echo "Failed to create Supermon crontab entry. Exiting."
-                    print_divider
-                    exit 1
-                }
-                echo "Supermon crontab entry created successfully."
-            fi
+            echo "ASL3 Supermon workaround systemd timer created successfully."
         else
-            echo "Supermon crontab entry not created."
+            echo "ASL3 Supermon workaround systemd timer not created."
         fi
     fi
 }
@@ -327,7 +437,7 @@ main() {
     download_swp
     configure_perms
     remove_old_cron
-    setup_crontab
+    setup_systemd_timer
     edit_config
 }
 

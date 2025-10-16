@@ -162,7 +162,11 @@ SkywarnPlus supports all 128 alert types included in the [NWS v1.2 API](https://
    ```bash
    bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mason10198/SkywarnPlus/main/swp-install)"
    ```
-2. Continue with [Configuration](#configuration).
+2. The installer will set up a systemd timer to automatically run SkywarnPlus every minute.
+3. Continue with [Configuration](#configuration).
+
+> [!NOTE]
+> SkywarnPlus requires systemd for automatic execution. If systemd is not available, you can still run SkywarnPlus manually.
 
 > [!NOTE]
 > To install manually, see [Manual Installation](#manual-installation).
@@ -499,6 +503,76 @@ You can also use `SkyControl.py` to manually force the state of Courtesy Tones o
 
 Upon the successful execution of a control command, the `SkyControl.py` script will provide spoken feedback that corresponds to the change made. For instance, if you execute a command to enable the SayAlert function, the script will play an audio message stating that SayAlert has been enabled. This feature enhances user experience and confirms that the desired changes have been effected.
 
+## SystemD Timer Management
+
+SkywarnPlus uses systemd timers for automatic execution instead of cron jobs. This provides better logging, more precise scheduling, and improved reliability.
+
+### Timer Status and Control
+
+You can manage the SkywarnPlus systemd timer using the `timer` command:
+
+```bash
+# Check timer status
+python3 skycontrol.py timer status
+
+# Start the timer
+python3 skycontrol.py timer start
+
+# Stop the timer
+python3 skycontrol.py timer stop
+
+# Restart the timer
+python3 skycontrol.py timer restart
+
+# Enable timer to start on boot
+python3 skycontrol.py timer enable
+
+# Disable timer from starting on boot
+python3 skycontrol.py timer disable
+
+# View recent logs
+python3 skycontrol.py timer logs
+
+# List all systemd timers
+python3 skycontrol.py timer list
+```
+
+### Viewing Logs
+
+SkywarnPlus logs are integrated with the systemd journal, providing centralized logging:
+
+```bash
+# View SkywarnPlus service logs
+journalctl -u skywarnplus.service
+
+# Follow logs in real-time
+journalctl -u skywarnplus.service -f
+
+# View logs from last hour
+journalctl -u skywarnplus.service --since "1 hour ago"
+
+# View timer status
+systemctl status skywarnplus.timer
+
+# List all active timers
+systemctl list-timers
+```
+
+### Timer Configuration
+
+The systemd timer runs SkywarnPlus every minute by default. The timer configuration is located at:
+- Service: `/etc/systemd/system/skywarnplus.service`
+- Timer: `/etc/systemd/system/skywarnplus.timer`
+
+### Advantages of SystemD Timers
+
+- **Better Logging**: All output goes to the systemd journal
+- **More Precise Scheduling**: Sub-second accuracy vs cron's minute precision
+- **Dependency Management**: Can wait for network and other services
+- **Persistent Execution**: Catches up if system was down
+- **Centralized Management**: Use `systemctl` for all timer operations
+- **Resource Limits**: Built-in security and resource constraints
+
 ## Mapping to DTMF Commands
 
 > [!IMPORTANT]
@@ -517,6 +591,9 @@ You can map the `SkyControl.py` script to DTMF commands in the `rpt.conf` file o
 837 = cmd,/usr/local/bin/SkywarnPlus/SkyControl.py idchange toggle ; Toggles IDChange
 838 = cmd,/usr/local/bin/SkywarnPlus/SkyControl.py changect normal ; Forces CT to "normal" mode
 839 = cmd,/usr/local/bin/SkywarnPlus/SkyControl.py changeid normal ; Forces ID to "normal" mode
+840 = cmd,/usr/local/bin/SkywarnPlus/SkyControl.py timer status ; Check systemd timer status
+841 = cmd,/usr/local/bin/SkywarnPlus/SkyControl.py timer restart ; Restart systemd timer
+842 = cmd,/usr/local/bin/SkywarnPlus/SkyControl.py timer logs ; View recent logs
 ```
 
 With this setup, you can control SkywarnPlus' functionality using DTMF commands.
