@@ -183,66 +183,6 @@ nano config.yaml
 
  You can find your county codes in the [CountyCodes.md](CountyCodes.md) file included in this repository. Navigate to the file and look for your state and then your specific county to find the associated County Code you'll use in SkywarnPlus to poll for alerts.
 
-## Modern Architecture
-
-SkywarnPlus has been completely modernized with a clean, modular architecture following Python best practices. The new structure provides better maintainability, testability, and extensibility while maintaining full backward compatibility.
-
-### New Modular Structure
-
-The application has been restructured into focused modules:
-
-**Core Application:**
-- **`src/skywarnplus.py`** - Main application class
-- **`src/api_client.py`** - NWS API interactions
-- **`src/audio_processor.py`** - Audio processing and caching
-- **`src/alert_processor.py`** - Alert processing and management
-- **`src/state_manager.py`** - State persistence
-- **`src/alert_announcer.py`** - Alert announcements and audio generation
-- **`src/notification_service.py`** - Pushover and other notifications
-- **`src/asterisk_integration.py`** - Asterisk/repeater integration
-- **`src/config.py`** - Configuration management
-
-**Utilities:**
-- **`src/tts_processor.py`** - Text-to-speech processing
-- **`src/text_processor.py`** - Text processing utilities
-- **`src/county_id_generator.py`** - County audio file generation
-- **`src/config_controller.py`** - Configuration control operations
-
-**Support:**
-- **`src/data_types.py`** - Type definitions and dataclasses
-- **`src/constants.py`** - Constants and enums
-- **`src/exceptions.py`** - Custom exception classes
-
-**Modernized Scripts:**
-- **`main.py`** - Main SkywarnPlus entry point
-- **`skydescribe.py`** - Modernized TTS utility
-- **`countyidgen.py`** - Modernized county ID generator
-- **`skycontrol.py`** - Modernized configuration controller
-
-### Migration Guide
-
-The new structure is fully backward compatible:
-
-- **Existing `config.yaml`** works unchanged
-- **All functionality preserved** from the original version
-- **New entry point**: Use `python3 main.py` instead of `python3 SkywarnPlus.py`
-- **Same output formats** and file locations
-
-For detailed migration information, see [MODERNIZATION_GUIDE.md](MODERNIZATION_GUIDE.md).
-
-**Quick Start with New Structure:**
-```bash
-# Install dependencies (if not already installed)
-pip3 install -r requirements.txt
-
-# Run SkywarnPlus
-python3 main.py
-
-# Use modernized utilities
-python3 skydescribe.py "Tornado Warning"    # Generate TTS for alert
-python3 countyidgen.py --force              # Generate county audio files
-python3 skycontrol.py set sayalert true     # Control configuration
-```
 
 > [!WARNING]
 > YOU WILL MISS ALERTS IF YOU USE A **ZONE** CODE. DO NOT USE **ZONE** CODES UNLESS YOU KNOW WHAT YOU ARE DOING.
