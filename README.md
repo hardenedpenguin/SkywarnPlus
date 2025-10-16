@@ -1037,25 +1037,6 @@ Follow the steps below to install:
 > chmod -R u+rw /usr/local/bin/SkywarnPlus/
 > ```
 
-4. **Crontab Entry**
-
-      1. **ASL1, ASL2, and HamVoIP**
-
-          Add a crontab entry to call SkywarnPlus on an interval **as the `root` user**.
-
-          ```bash
-          echo '* * * * * root /usr/local/bin/SkywarnPlus/SkywarnPlus.py' > /etc/cron.d/SkywarnPlus
-          ```
-    
-    1. **ASL3**
-
-        Add a crontab entry to call SkywarnPlus on an interval **as the `asterisk` user**
-
-        ```bash
-        echo '* * * * * asterisk /usr/local/bin/SkywarnPlus/SkywarnPlus.py' > /etc/cron.d/SkywarnPlus
-        ```
-
-   This command will execute SkywarnPlus (poll NWS API for data) every 60 seconds. For slower systems, or systems with several counties and/or advanced configurations, the interval may need to be increased.
 
 # Testing
 
