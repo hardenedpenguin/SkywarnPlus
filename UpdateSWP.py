@@ -192,7 +192,7 @@ log("Downloading SkywarnPlus from {}...".format(url))
 # Use session for connection pooling
 session = requests.Session()
 session.headers.update({
-    'User-Agent': 'SkywarnPlus-Update/0.8.0',
+    'User-Agent': 'SkywarnPlus-Update/1.0.0',
     'Accept': 'application/zip',
     'Accept-Encoding': 'gzip, deflate'
 })

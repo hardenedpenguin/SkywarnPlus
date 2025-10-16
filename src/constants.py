@@ -54,7 +54,7 @@ WORD_SEVERITY_MAPPING = {
 
 # Default HTTP Headers
 DEFAULT_HEADERS = {
-    'User-Agent': 'SkywarnPlus/0.8.0 (Weather Alert System) - Contact: mason@example.com',
+    'User-Agent': 'SkywarnPlus/1.0.0 (Weather Alert System) - Contact: mason@example.com',
     'Accept': 'application/geo+json, application/json',
     'Accept-Encoding': 'gzip, deflate',
     'Accept-Language': 'en-US, en;q=0.9'
