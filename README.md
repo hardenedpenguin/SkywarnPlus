@@ -906,15 +906,26 @@ Follow the steps below to install:
    pip3 install ruamel.yaml requests python-dateutil pydub
    ```
 
-   2. **Debian 12 and Newer (ASL 3+)**
+   2. **Debian 12 (Bookworm) and Newer, including Debian 13 (Trixie) (ASL 3+)**
    
-   Beginning around Debian 12 "Bookworm", installing Python packages via `pip` will have Debian throw a fit about package managers and externally managed virtual environments. Use these commands instead on newer distros.
+   Beginning with Debian 12 "Bookworm" and continuing through Debian 13 "Trixie", installing Python packages via `pip` will have Debian throw a fit about package managers and externally managed virtual environments. Use these commands instead on newer distros.
 
-    ```bash
-    # EXECUTE ONE LINE AT A TIME
-    apt install unzip python3 python3-pip ffmpeg
-    apt install python3-ruamel.yaml python3-requests python3-dateutil python3-pydub
-    ```
+   **For Debian 12 (Bookworm):**
+   ```bash
+   # EXECUTE ONE LINE AT A TIME
+   apt install unzip python3 python3-pip ffmpeg
+   apt install python3-ruamel.yaml python3-requests python3-dateutil python3-pydub
+   ```
+
+   **For Debian 13 (Trixie):**
+   ```bash
+   # EXECUTE ONE LINE AT A TIME
+   apt install unzip python3 python3-pip ffmpeg
+   apt install python3-ruamel.yaml python3-requests python3-dateutil
+   # Note: python3-pydub is not available in Trixie due to Python 3.13 compatibility issues.
+   # Install pydub via pip instead (latest version works with Python 3.13):
+   pip3 install --break-system-packages pydub
+   ```
 
    3. **Arch (HAMVOIP)**
 
